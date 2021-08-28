@@ -35,6 +35,9 @@ export class TGPrinter {
   public readonly userSettings: ObjectVariable<JobTemplateAttributes>;
   public readonly jobNameAt: StringVariable;
 
+  // Available job attributes fetched from the printer
+  public availableJobAttributes: IStatus = {};
+
   // Bot and ls
   private readonly bot: TelegramBot;
   private readonly ls: LocalStorage;
@@ -44,9 +47,6 @@ export class TGPrinter {
 
   // User settable job attributes
   private readonly jobAttributes: Array<keyof JobTemplateAttributes>;
-
-  // Available job attributes fetched from the printer
-  private availableJobAttributes: IStatus = {};
 
   constructor(
     printerName: string,
@@ -69,14 +69,6 @@ export class TGPrinter {
 
     // Create printer and fetch available job attributes
     this.printer = new IPPPrinter(printerURL);
-    this.printer
-      .printerStatus(
-        this.jobAttributes
-          .map((s: string) => s + (s === "media" ? "-ready" : "-supported"))
-          .concat(this.jobAttributes.map(s => s + "-default")) as any
-      )
-      .then(status => (this.availableJobAttributes = status))
-      .catch(e => console.error(e));
 
     // Register query callback
     this.bot.on("callback_query", q => {
@@ -85,6 +77,19 @@ export class TGPrinter {
         this.bot.editMessageReplyMarkup({ inline_keyboard: keyboard }, { chat_id: q.message?.chat.id, message_id: q.message?.message_id });
       }
     });
+  }
+
+  /**
+   * Fetch available print job attributes from the printer and store them.
+   */
+  public async load(): Promise<IStatus> {
+    return this.printer
+      .printerStatus(
+        this.jobAttributes
+          .map((s: string) => s + (s === "media" ? "-ready" : "-supported"))
+          .concat(this.jobAttributes.map(s => s + "-default")) as any
+      )
+      .then(status => (this.availableJobAttributes = status));
   }
 
   /**
