@@ -52,7 +52,7 @@ export class TGPrinter {
     private readonly ls: LocalStorage,
     private readonly statusAttributes: Array<keyof PrinterStatus | keyof PrinterDescription>,
     private readonly jobAttributes: Array<keyof JobTemplateAttributes>,
-    tgBotName?: string,
+    tgBotName?: string
   ) {
     this.jobNameAt = new StringVariable(`${this.name}JobNameAt`, tgBotName || "TelegramBot", this.ls);
     this.userSettings = new ObjectVariable<JobTemplateAttributes>(`${this.name}UserSettings`, {}, this.ls);
