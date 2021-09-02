@@ -25,9 +25,6 @@ interface ICallbackData {
 }
 
 export class TGPrinter {
-  // Printer name
-  public readonly name: string;
-
   // Printer
   public readonly printer: IPPPrinter;
 
@@ -38,33 +35,26 @@ export class TGPrinter {
   // Available job attributes fetched from the printer
   public availableJobAttributes: IStatus = {};
 
-  // Bot and ls
-  private readonly bot: TelegramBot;
-  private readonly ls: LocalStorage;
-
-  // Attributes to fetch when asking for printer status
-  private readonly statusAttributes: Array<keyof PrinterStatus | keyof PrinterDescription>;
-
-  // User settable job attributes
-  private readonly jobAttributes: Array<keyof JobTemplateAttributes>;
-
+  // XXX: Change to one options object
+  /**
+   * @param name Printer name.
+   * @param printerURL Printer URL.
+   * @param bot node-telegra-bot-api TelegramBot instance.
+   * @param ls node-localstorage LocalStorage instance.
+   * @param statusAttributes Attributes to fetch when asking for printer status.
+   * @param jobAttributes User settable print job attributes.
+   * @param tgBotName Telegram bot name.
+   */
   constructor(
-    printerName: string,
+    public readonly name: string,
     printerURL: string,
-    bot: TelegramBot,
-    ls: LocalStorage,
-    statusAttributes: Array<keyof PrinterStatus | keyof PrinterDescription>,
-    jobAttributes: Array<keyof JobTemplateAttributes>,
-    tgBotName: string
+    private readonly bot: TelegramBot,
+    private readonly ls: LocalStorage,
+    private readonly statusAttributes: Array<keyof PrinterStatus | keyof PrinterDescription>,
+    private readonly jobAttributes: Array<keyof JobTemplateAttributes>,
+    tgBotName?: string,
   ) {
-    this.name = printerName;
-    this.bot = bot;
-    this.ls = ls;
-
-    this.statusAttributes = statusAttributes;
-    this.jobAttributes = jobAttributes;
-
-    this.jobNameAt = new StringVariable(`${this.name}JobNameAt`, tgBotName, this.ls);
+    this.jobNameAt = new StringVariable(`${this.name}JobNameAt`, tgBotName || "TelegramBot", this.ls);
     this.userSettings = new ObjectVariable<JobTemplateAttributes>(`${this.name}UserSettings`, {}, this.ls);
 
     // Create printer and fetch available job attributes
@@ -122,7 +112,10 @@ export class TGPrinter {
       username,
     };
 
-    return this.printer.printFile(options).then(() => `${username}/${jobName}`);
+    return this.printer.printFile(options).then(() => {
+      const name = `${username}/${jobName}`;
+      return name;
+    });
   }
 
   /**
@@ -145,7 +138,10 @@ export class TGPrinter {
       jobAttributes: this.userSettings.get(user.id),
     };
 
-    return this.printer.printFile(options).then(() => `${username}/${jobName}`);
+    return this.printer.printFile(options).then(() => {
+      const name = `${username}/${jobName}`;
+      return name;
+    });
   }
 
   /**
