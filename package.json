@@ -20,9 +20,9 @@
     },
     "repository": {
         "type": "git",
-        "url": "git@github.com:filiptypjeu/"
+        "url": "git@github.com:filiptypjeu/npm-tgobot-printer.git"
     },
-    "homepage": "https://github.com/filiptypjeu/",
+    "homepage": "https://github.com/filiptypjeu/npm-tgobot-printer",
     "author": "Filip Stenbacka",
     "license": "ISC",
     "types": "dist/index.d.ts",
