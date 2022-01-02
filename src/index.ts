@@ -264,8 +264,8 @@ export class TGPrinter extends TGKeyboard {
     return text;
   }
 
-  private addValue(chatId: ChatID, property: keyof JobTemplateAttributes, add: string): number {
-    const oldValue = this.userSettings.getProperty(property, chatId);
+  private addValue(chat_id: ChatID, property: keyof JobTemplateAttributes, add: string): number {
+    const oldValue = this.userSettings.getProperty(property, chat_id);
     let newValue: number;
     if (typeof oldValue === "number") {
       newValue = oldValue + (Number(add) || 0);
@@ -273,12 +273,12 @@ export class TGPrinter extends TGKeyboard {
       newValue = 1;
     }
 
-    this.userSettings.setProperty(property, newValue, chatId);
+    this.userSettings.setProperty(property, newValue, chat_id);
     return newValue;
   }
 
-  private settingsToString(chatId: ChatID): string {
-    return `<b>${this.name} printer settings</b>\n<code>${JSON.stringify(this.userSettings.get(chatId), null, 2)}</code>`;
+  private settingsToString(chat_id: ChatID): string {
+    return `<b>${this.name} printer settings</b>\n<code>${JSON.stringify(this.userSettings.get(chat_id), null, 2)}</code>`;
   }
 
   private username(user: TelegramBot.User): string {
