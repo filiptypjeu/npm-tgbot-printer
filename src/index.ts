@@ -55,7 +55,7 @@ export class TGPrinter extends TGKeyboard {
     private readonly statusAttributes: Array<keyof PrinterStatus | keyof PrinterDescription>,
     private readonly jobAttributes: Array<keyof JobTemplateAttributes>,
     tgBotName?: string,
-    keyboardId: string = "P"
+    keyboardId = "P"
   ) {
     super(keyboardId, bot, ls);
 
@@ -78,8 +78,10 @@ export class TGPrinter extends TGKeyboard {
       )
       .then(status => {
         this.availableJobAttributes = status;
-        const d: any = {};
-        this.jobAttributes.forEach(s => { d[s] = status[s + "-default" as keyof IStatus]; });
+        const d: { [key: string]: any } = {};
+        this.jobAttributes.forEach(s => {
+          d[s] = status[(s + "-default") as keyof IStatus];
+        });
         this.userSettings.defaultValue = d;
         return status;
       });
