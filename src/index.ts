@@ -146,7 +146,7 @@ export class TGPrinter extends TGKeyboard {
    *
    * @param attribute Which second level keyboard to create.
    */
-  public keyboard(attribute?: keyof JobTemplateAttributes): TelegramBot.InlineKeyboardButton[][] {
+  public keyboard(_chat_id: ChatID, attribute?: keyof JobTemplateAttributes): TelegramBot.InlineKeyboardButton[][] {
     const keyboard: TelegramBot.InlineKeyboardButton[][] = [];
 
     if (!attribute) {
@@ -248,7 +248,7 @@ export class TGPrinter extends TGKeyboard {
         break;
 
       case CallbackType.GoTo:
-        this.editKeyboard(chat_id, this.keyboard(info.attribute));
+        this.editKeyboard(chat_id, this.keyboard(chat_id, info.attribute));
         break;
 
       case CallbackType.ClearAll:
