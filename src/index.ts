@@ -76,7 +76,13 @@ export class TGPrinter extends TGKeyboard {
           .map((s: string) => s + (s === "media" ? "-ready" : "-supported"))
           .concat(this.jobAttributes.map(s => s + "-default")) as any
       )
-      .then(status => (this.availableJobAttributes = status));
+      .then(status => {
+        this.availableJobAttributes = status;
+        const d: any = {};
+        this.jobAttributes.forEach(s => { d[s] = status[s + "-default" as keyof IStatus]; });
+        this.userSettings.defaultValue = d;
+        return status;
+      });
   }
 
   /**
