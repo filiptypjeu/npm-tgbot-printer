@@ -30,7 +30,7 @@ export class TGPrinter extends TGKeyboard {
   public readonly printer: IPPPrinter;
 
   // Variables
-  public readonly userSettings: ObjectVariable<JobTemplateAttributes>;
+  private readonly userSettings: ObjectVariable<JobTemplateAttributes>;
   public readonly jobNameAt: StringVariable;
 
   // Available job attributes fetched from the printer
@@ -271,14 +271,9 @@ export class TGPrinter extends TGKeyboard {
   }
 
   private addValue(chat_id: ChatID, property: keyof JobTemplateAttributes, add: string): number {
-    const oldValue = this.userSettings.getProperty(property, chat_id);
-    let newValue: number;
-    if (typeof oldValue === "number") {
-      newValue = oldValue + (Number(add) || 0);
-    } else {
-      newValue = 1;
-    }
-
+    const prop = this.userSettings.getProperty(property, chat_id);
+    const oldValue = typeof prop === "number" ? prop : 1;
+    const newValue = oldValue + (Number(add) || 0);
     this.userSettings.setProperty(property, newValue, chat_id);
     return newValue;
   }
