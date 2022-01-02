@@ -1,6 +1,7 @@
 import { JobTemplateAttributes, MimeMediaType, PrinterDescription, PrinterStatus } from "ipp";
 import { IPPPrinter, IPrintJobInfo, IStatus } from "ipp-easyprint";
 import { LocalStorage } from "node-localstorage";
+import { TGKeyboard } from "tgbot-keyboard";
 import TelegramBot from "node-telegram-bot-api";
 import { ChatID, ObjectVariable, StringVariable } from "tgbot-helpers";
 import { URL } from "url";
@@ -24,7 +25,7 @@ interface ICallbackData {
   data?: any;
 }
 
-export class TGPrinter {
+export class TGPrinter extends TGKeyboard {
   // Printer
   public readonly printer: IPPPrinter;
 
@@ -44,29 +45,25 @@ export class TGPrinter {
    * @param statusAttributes Attributes to fetch when asking for printer status.
    * @param jobAttributes User settable print job attributes.
    * @param tgBotName Telegram bot name.
+   * @param keyboardId Short ID for the keyboard.
    */
   constructor(
     public readonly name: string,
     printerURL: string,
-    private readonly bot: TelegramBot,
-    private readonly ls: LocalStorage,
+    bot: TelegramBot,
+    ls: LocalStorage,
     private readonly statusAttributes: Array<keyof PrinterStatus | keyof PrinterDescription>,
     private readonly jobAttributes: Array<keyof JobTemplateAttributes>,
-    tgBotName?: string
+    tgBotName?: string,
+    keyboardId: string = "P"
   ) {
+    super(keyboardId, bot, ls);
+
     this.jobNameAt = new StringVariable(`${this.name}JobNameAt`, tgBotName || "TelegramBot", this.ls);
     this.userSettings = new ObjectVariable<JobTemplateAttributes>(`${this.name}UserSettings`, {}, this.ls);
 
     // Create printer and fetch available job attributes
     this.printer = new IPPPrinter(printerURL);
-
-    // Register query callback
-    this.bot.on("callback_query", q => {
-      const keyboard = this.handleCallback(q);
-      if (keyboard) {
-        this.bot.editMessageReplyMarkup({ inline_keyboard: keyboard }, { chat_id: q.message?.chat.id, message_id: q.message?.message_id });
-      }
-    });
   }
 
   /**
@@ -210,8 +207,8 @@ export class TGPrinter {
     return keyboard;
   }
 
-  private toCallbackData(callbackType: CallbackType, attribute?: keyof JobTemplateAttributes, data?: any): CallbackData {
-    return `${callbackType}:${attribute || ""}:${typeof data === "undefined" ? "" : JSON.stringify(data)}`;
+  private toCallbackData(callbackType: CallbackType, attribute?: keyof JobTemplateAttributes, data?: any): string {
+    return this.ccd(`${callbackType}:${attribute || ""}:${typeof data === "undefined" ? "" : JSON.stringify(data)}`);
   }
 
   private fromCallbackData(callbackData: CallbackData): ICallbackData {
@@ -224,16 +221,11 @@ export class TGPrinter {
     };
   }
 
-  private handleCallback(q: TelegramBot.CallbackQuery): TelegramBot.InlineKeyboardButton[][] | undefined {
-    if (!q.data || !q.message) {
-      return;
-    }
-
-    const info = this.fromCallbackData(q.data as CallbackData);
-    const chat_id = q.message.chat.id;
+  protected handleCallback(callbackData: string, q: TelegramBot.CallbackQuery): string {
+    const info = this.fromCallbackData(callbackData as CallbackData);
+    const chat_id = q.message!.chat.id;
 
     let text = "";
-    let keyboard: TelegramBot.InlineKeyboardButton[][] | undefined;
 
     switch (info.callbackType) {
       case CallbackType.SetValue:
@@ -248,29 +240,28 @@ export class TGPrinter {
       case CallbackType.SetValueAndBack:
         this.userSettings.setProperty(info.attribute!, info.data, chat_id);
         text = `${info.attribute!} = ${info.data}`;
-        keyboard = this.keyboard();
+        this.editKeyboard(chat_id);
         break;
 
       case CallbackType.Back:
-        keyboard = this.keyboard();
+        this.editKeyboard(chat_id);
         break;
 
       case CallbackType.GoTo:
-        keyboard = this.keyboard(info.attribute);
+        this.editKeyboard(chat_id, this.keyboard(info.attribute));
         break;
 
       case CallbackType.ClearAll:
-        text = "All print settings removed";
+        text = "All printer settings removed";
         this.userSettings.reset(chat_id);
         break;
 
       case CallbackType.Exit:
-        this.bot.editMessageText(this.settingsToString(chat_id), { chat_id, message_id: q.message.message_id, parse_mode: "HTML" });
+        this.removeKeyboard(chat_id, this.settingsToString(chat_id));
         break;
     }
 
-    this.bot.answerCallbackQuery(q.id, { text });
-    return keyboard;
+    return text;
   }
 
   private addValue(chatId: ChatID, property: keyof JobTemplateAttributes, add: string): number {
