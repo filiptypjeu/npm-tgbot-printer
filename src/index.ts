@@ -1,11 +1,13 @@
 import { JobTemplateAttributes, MimeMediaType, PrinterDescription, PrinterStatus } from "ipp";
 import { IPPPrinter, IPrintJobInfo, IStatus } from "ipp-easyprint";
 import { LocalStorage } from "node-localstorage";
-import { TGKeyboard } from "tgbot-keyboard";
+import { TGKeyboard, TGKeyboardBuilder } from "tgbot-keyboard";
 import TelegramBot from "node-telegram-bot-api";
 import { ChatID, ObjectVariable, StringVariable } from "tgbot-helpers";
 import { URL } from "url";
 import fetch from "node-fetch";
+
+// XXX: Clear all settings will show all default values, but then setting one of them will make it show only the set value
 
 enum CallbackType {
   SetValue = "A",
@@ -155,64 +157,54 @@ export class TGPrinter extends TGKeyboard {
    * @param attribute Which second level keyboard to create.
    */
   public keyboard(_chat_id: ChatID, attribute?: keyof JobTemplateAttributes): TelegramBot.InlineKeyboardButton[][] {
-    const keyboard: TelegramBot.InlineKeyboardButton[][] = [];
+    const b = new TGKeyboardBuilder();
 
     if (!attribute) {
-      this.jobAttributes.forEach(key => keyboard.push([{ text: key, callback_data: this.toCallbackData(CallbackType.GoTo, key) }]));
+      b.addRows(this.jobAttributes.map(k => [k]), key => ({ text: key, callback_data: this.toCallbackData(CallbackType.GoTo, key) }));
 
-      keyboard.push([
-        { text: "Exit", callback_data: this.toCallbackData(CallbackType.Exit) },
-        { text: "Clear all", callback_data: this.toCallbackData(CallbackType.ClearAll) },
-      ]);
+      b.addRow().addButton({
+        text: "Exit",
+        callback_data: this.toCallbackData(CallbackType.Exit),
+      }).addButton({
+        text: "Clear all",
+        callback_data: this.toCallbackData(CallbackType.ClearAll),
+      });
+
     } else {
       if (attribute === "copies") {
-        [1, 5, 10].forEach(i =>
-          keyboard.push([
-            {
-              text: i.toString(),
-              callback_data: this.toCallbackData(CallbackType.SetValue, "copies", i),
-            },
-          ])
-        );
-        [1, 5, 10, -1].forEach(i =>
-          keyboard.push([
-            {
-              text: i > 0 ? `+${i}` : i.toString(),
-              callback_data: this.toCallbackData(CallbackType.AddValue, "copies", i),
-            },
-          ])
-        );
+        b.addRow([1, 5, 10], i => ({
+          text: i.toString(),
+          callback_data: this.toCallbackData(CallbackType.SetValue, "copies", i),
+        }));
+        b.addRow([1, 5, 10, -1], i => ({
+          text: i > 0 ? `+${i}` : i.toString(),
+          callback_data: this.toCallbackData(CallbackType.AddValue, "copies", i),
+        }));
+
       } else {
         const values = this.availableJobAttributes[(attribute + (attribute === "media" ? "-ready" : "-supported")) as keyof IStatus];
         if (values && Array.isArray(values)) {
-          values.forEach(v =>
-            keyboard.push([
-              {
-                text: typeof v === "string" ? v : JSON.stringify(v),
-                callback_data: this.toCallbackData(CallbackType.SetValueAndBack, attribute, v),
-              },
-            ])
-          );
+          b.addRows(values.map(value => [value]), v => ({
+            text: typeof v === "string" ? v : JSON.stringify(v),
+            callback_data: this.toCallbackData(CallbackType.SetValueAndBack, attribute, v),
+          }));
         }
       }
 
-      keyboard.push([
-        {
-          text: "Back",
-          callback_data: this.toCallbackData(CallbackType.Back),
-        },
-        {
-          text: "Default",
-          callback_data: this.toCallbackData(
-            CallbackType.SetValue,
-            attribute,
-            this.availableJobAttributes[(attribute + "-default") as keyof IStatus]
-          ),
-        },
-      ]);
+      b.addRow().addButton({
+        text: "Back",
+        callback_data: this.toCallbackData(CallbackType.Back),
+      }).addButton({
+        text: "Default",
+        callback_data: this.toCallbackData(
+          CallbackType.SetValue,
+          attribute,
+          this.availableJobAttributes[(attribute + "-default") as keyof IStatus]
+        ),
+      });
     }
 
-    return keyboard;
+    return b.build();
   }
 
   private toCallbackData(callbackType: CallbackType, attribute?: keyof JobTemplateAttributes, data?: any): string {
