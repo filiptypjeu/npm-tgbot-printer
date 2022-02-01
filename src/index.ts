@@ -267,7 +267,7 @@ export class TGPrinter extends TGKeyboard {
   private addValue(chat_id: ChatID, property: keyof JobTemplateAttributes, add: string): number {
     const prop = this.userSettings.getProperty(property, chat_id);
     const oldValue = typeof prop === "number" ? prop : 1;
-    const newValue = oldValue + (Number(add) || 0);
+    const newValue = Math.max(oldValue + (Number(add) || 0), 1);
     this.userSettings.setProperty(property, newValue, chat_id);
     return newValue;
   }
