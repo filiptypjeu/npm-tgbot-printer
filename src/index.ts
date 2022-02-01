@@ -160,16 +160,20 @@ export class TGPrinter extends TGKeyboard {
     const b = new TGKeyboardBuilder();
 
     if (!attribute) {
-      b.addRows(this.jobAttributes.map(k => [k]), key => ({ text: key, callback_data: this.toCallbackData(CallbackType.GoTo, key) }));
+      b.addRows(
+        this.jobAttributes.map(k => [k]),
+        key => ({ text: key, callback_data: this.toCallbackData(CallbackType.GoTo, key) })
+      );
 
-      b.addRow().addButton({
-        text: "Exit",
-        callback_data: this.toCallbackData(CallbackType.Exit),
-      }).addButton({
-        text: "Clear all",
-        callback_data: this.toCallbackData(CallbackType.ClearAll),
-      });
-
+      b.addRow()
+        .addButton({
+          text: "Exit",
+          callback_data: this.toCallbackData(CallbackType.Exit),
+        })
+        .addButton({
+          text: "Clear all",
+          callback_data: this.toCallbackData(CallbackType.ClearAll),
+        });
     } else {
       if (attribute === "copies") {
         b.addRow([1, 5, 10], i => ({
@@ -180,28 +184,32 @@ export class TGPrinter extends TGKeyboard {
           text: i > 0 ? `+${i}` : i.toString(),
           callback_data: this.toCallbackData(CallbackType.AddValue, "copies", i),
         }));
-
       } else {
         const values = this.availableJobAttributes[(attribute + (attribute === "media" ? "-ready" : "-supported")) as keyof IStatus];
         if (values && Array.isArray(values)) {
-          b.addRows(values.map(value => [value]), v => ({
-            text: typeof v === "string" ? v : JSON.stringify(v),
-            callback_data: this.toCallbackData(CallbackType.SetValueAndBack, attribute, v),
-          }));
+          b.addRows(
+            values.map(value => [value]),
+            v => ({
+              text: typeof v === "string" ? v : JSON.stringify(v),
+              callback_data: this.toCallbackData(CallbackType.SetValueAndBack, attribute, v),
+            })
+          );
         }
       }
 
-      b.addRow().addButton({
-        text: "Back",
-        callback_data: this.toCallbackData(CallbackType.Back),
-      }).addButton({
-        text: "Default",
-        callback_data: this.toCallbackData(
-          CallbackType.SetValue,
-          attribute,
-          this.availableJobAttributes[(attribute + "-default") as keyof IStatus]
-        ),
-      });
+      b.addRow()
+        .addButton({
+          text: "Back",
+          callback_data: this.toCallbackData(CallbackType.Back),
+        })
+        .addButton({
+          text: "Default",
+          callback_data: this.toCallbackData(
+            CallbackType.SetValue,
+            attribute,
+            this.availableJobAttributes[(attribute + "-default") as keyof IStatus]
+          ),
+        });
     }
 
     return b.build();
