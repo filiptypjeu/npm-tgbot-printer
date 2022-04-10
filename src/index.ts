@@ -1,11 +1,9 @@
 import { JobTemplateAttributes, MimeMediaType, PrinterDescription, PrinterStatus } from "ipp";
 import { IPPPrinter, IPrintJobInfo, IStatus } from "ipp-easyprint";
-import { LocalStorage } from "node-localstorage";
 import { TGKeyboard, TGKeyboardBuilder } from "tgbot-keyboard";
 import TelegramBot from "node-telegram-bot-api";
-import { ChatID, ObjectVariable, StringVariable } from "tgbot-helpers";
-import { URL } from "url";
 import fetch from "node-fetch";
+import { ILocalStorage, Variable } from "persistance";
 
 // XXX: Clear all settings will show all default values, but then setting one of them will make it show only the set value
 
@@ -20,6 +18,7 @@ enum CallbackType {
 }
 
 type CallbackData = `${CallbackType}:${keyof JobTemplateAttributes | ""}:${string}`;
+type ChatId = TelegramBot.ChatId;
 
 interface ICallbackData {
   callbackType: CallbackType;
@@ -32,8 +31,8 @@ export class TGPrinter extends TGKeyboard {
   public readonly printer: IPPPrinter;
 
   // Variables
-  private readonly userSettings: ObjectVariable<JobTemplateAttributes>;
-  public readonly jobNameAt: StringVariable;
+  private readonly userSettings: Variable<JobTemplateAttributes>;
+  public readonly jobNameAt: Variable<string>;
 
   // Available job attributes fetched from the printer
   public availableJobAttributes: IStatus = {};
@@ -53,7 +52,7 @@ export class TGPrinter extends TGKeyboard {
     public readonly name: string,
     printerURL: string,
     bot: TelegramBot,
-    ls: LocalStorage,
+    ls: ILocalStorage,
     private readonly statusAttributes: Array<keyof PrinterStatus | keyof PrinterDescription>,
     private readonly jobAttributes: Array<keyof JobTemplateAttributes>,
     tgBotName?: string,
@@ -61,11 +60,17 @@ export class TGPrinter extends TGKeyboard {
   ) {
     super(keyboardId, bot, ls);
 
-    this.jobNameAt = new StringVariable(`${this.name}JobNameAt`, tgBotName || "TelegramBot", this.ls);
-    this.userSettings = new ObjectVariable<JobTemplateAttributes>(`${this.name}UserSettings`, {}, this.ls);
+    this.jobNameAt = new Variable<string>(`${this.name}JobNameAt`, tgBotName || "TelegramBot", this.ls);
+    this.userSettings = new Variable<JobTemplateAttributes>(`${this.name}UserSettings`, {}, this.ls);
 
     // Create printer and fetch available job attributes
     this.printer = new IPPPrinter(printerURL);
+  }
+
+  private setSetting(key: keyof JobTemplateAttributes, value: any, chat_id: ChatId): void {
+    const o = this.userSettings.get(chat_id) as any;
+    o[key] = value;
+    this.userSettings.set(o, chat_id);
   }
 
   /**
@@ -156,7 +161,7 @@ export class TGPrinter extends TGKeyboard {
    *
    * @param attribute Which second level keyboard to create.
    */
-  public keyboard(_chat_id: ChatID, attribute?: keyof JobTemplateAttributes): TelegramBot.InlineKeyboardButton[][] {
+  public keyboard(_chat_id: ChatId, attribute?: keyof JobTemplateAttributes): TelegramBot.InlineKeyboardButton[][] {
     const b = new TGKeyboardBuilder();
 
     if (!attribute) {
@@ -237,7 +242,7 @@ export class TGPrinter extends TGKeyboard {
 
     switch (info.callbackType) {
       case CallbackType.SetValue:
-        this.userSettings.setProperty(info.attribute!, info.data, chat_id);
+        this.setSetting(info.attribute!, info.data, chat_id);
         text = `${info.attribute!} = ${info.data}`;
         break;
 
@@ -246,7 +251,7 @@ export class TGPrinter extends TGKeyboard {
         break;
 
       case CallbackType.SetValueAndBack:
-        this.userSettings.setProperty(info.attribute!, info.data, chat_id);
+        this.setSetting(info.attribute!, info.data, chat_id);
         text = `${info.attribute!} = ${info.data}`;
         this.editKeyboard(chat_id);
         break;
@@ -261,7 +266,7 @@ export class TGPrinter extends TGKeyboard {
 
       case CallbackType.ClearAll:
         text = "All printer settings removed";
-        this.userSettings.reset(chat_id);
+        this.userSettings.clear(chat_id);
         break;
 
       case CallbackType.Exit:
@@ -272,15 +277,15 @@ export class TGPrinter extends TGKeyboard {
     return text;
   }
 
-  private addValue(chat_id: ChatID, property: keyof JobTemplateAttributes, add: string): number {
-    const prop = this.userSettings.getProperty(property, chat_id);
+  private addValue(chat_id: ChatId, property: keyof JobTemplateAttributes, add: string): number {
+    const prop = this.userSettings.get(chat_id)[property];
     const oldValue = typeof prop === "number" ? prop : 1;
     const newValue = Math.max(oldValue + (Number(add) || 0), 1);
-    this.userSettings.setProperty(property, newValue, chat_id);
+    this.setSetting(property, newValue, chat_id);
     return newValue;
   }
 
-  private settingsToString(chat_id: ChatID): string {
+  private settingsToString(chat_id: ChatId): string {
     return `<b>${this.name} printer settings</b>\n<code>${JSON.stringify(this.userSettings.get(chat_id), null, 2)}</code>`;
   }
 
